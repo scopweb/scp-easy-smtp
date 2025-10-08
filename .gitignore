@@ -1,0 +1,36 @@
+# WordPress
+*.log
+*.sql
+*.sqlite
+.DS_Store
+Thumbs.db
+
+# Configuration files (contienen credenciales sensibles)
+config.ini
+scp-config.ini
+
+# Archivos antiguos y de backup
+settings-page.php
+style.css
+scripts.js
+
+# Debug y testing
+test-smtp.php
+DEBUG.md
+
+# Node modules (si se usa npm en el futuro)
+node_modules/
+package-lock.json
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+
+# Logs
+*.log
+wp-content/scp-smtp-debug.log
+
+# OS
+.DS_Store
+Thumbs.db

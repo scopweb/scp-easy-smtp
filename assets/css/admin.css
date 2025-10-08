@@ -1,0 +1,520 @@
+/**
+ * SCP Easy SMTP - Admin Styles
+ * Following WordPress UI Standards and Best Practices
+ */
+
+/* ==========================================================================
+   Main Container - WordPress Standard
+   ========================================================================== */
+
+.scp-smtp-wrap {
+    margin: 10px 20px 0 2px;
+}
+
+.scp-smtp-wrap > h1 {
+    padding: 0;
+    margin: 0 0 1em 0;
+    line-height: 1.3;
+    font-size: 23px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.scp-smtp-wrap > h1 .dashicons {
+    color: #2271b1;
+}
+
+.scp-version {
+    font-size: 13px;
+    color: #646970;
+    font-weight: normal;
+}
+
+/* ==========================================================================
+   Tabs Navigation - WordPress Standard
+   ========================================================================== */
+
+.scp-nav-tabs {
+    margin: 0 0 0 0;
+    border-bottom: 1px solid #c3c4c7;
+    padding: 0;
+}
+
+.scp-nav-tabs .nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    margin: 0 4px -1px 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: #f0f0f1;
+    color: #50575e;
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1.71428571;
+}
+
+.scp-nav-tabs .nav-tab:hover {
+    background: #fff;
+    color: #2271b1;
+}
+
+.scp-nav-tabs .nav-tab .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.scp-nav-tabs .nav-tab-active,
+.scp-nav-tabs .nav-tab-active:hover {
+    background: #fff;
+    border-color: #c3c4c7;
+    border-bottom-color: #fff;
+    color: #000;
+    margin-bottom: -1px;
+}
+
+/* ==========================================================================
+   Tab Content Area - WordPress Standard
+   ========================================================================== */
+
+.scp-smtp-tab-content {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-top: none;
+    padding: 20px;
+    min-height: 400px;
+}
+
+/* ==========================================================================
+   Dashboard Grid Layout
+   ========================================================================== */
+
+.scp-smtp-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+/* ==========================================================================
+   Cards - WordPress Standard Box Style
+   ========================================================================== */
+
+.scp-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    padding: 20px;
+}
+
+.scp-card h2 {
+    margin: 0 0 15px;
+    padding: 0 0 10px;
+    border-bottom: 1px solid #f0f0f1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+    text-transform: none;
+}
+
+.scp-card h3 {
+    margin: 15px 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #646970;
+}
+
+/* ==========================================================================
+   Status Items - WordPress Standard
+   ========================================================================== */
+
+.scp-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f6f7f7;
+    margin-bottom: 10px;
+}
+
+.scp-status-label {
+    font-weight: 600;
+    color: #1d2327;
+    font-size: 13px;
+}
+
+.scp-status-badge {
+    padding: 4px 10px;
+    border-radius: 2px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.scp-status-ok {
+    background: #d5f5e3;
+    color: #0a5b2e;
+}
+
+.scp-status-error {
+    background: #fce8e6;
+    color: #a00;
+}
+
+/* ==========================================================================
+   Config Details
+   ========================================================================== */
+
+.scp-config-details {
+    background: #f6f7f7;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.scp-config-details p {
+    margin: 6px 0;
+    font-size: 13px;
+    color: #50575e;
+}
+
+.scp-config-path {
+    margin-top: 12px;
+}
+
+.scp-config-path p {
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: #50575e;
+    font-weight: 600;
+}
+
+.scp-config-path code {
+    display: block;
+    background: #f6f7f7;
+    color: #1d2327;
+    padding: 8px;
+    font-size: 12px;
+    overflow-x: auto;
+    border: 1px solid #dcdcde;
+}
+
+/* ==========================================================================
+   Forms - WordPress Standard
+   ========================================================================== */
+
+.scp-form-group {
+    margin-bottom: 15px;
+}
+
+.scp-form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #1d2327;
+    font-size: 13px;
+}
+
+.scp-form-group input[type="email"] {
+    padding: 6px 8px;
+    border: 1px solid #8c8f94;
+    border-radius: 0;
+    background: #fff;
+    color: #2c3338;
+    font-size: 13px;
+}
+
+.scp-form-group input[type="email"]:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+/* ==========================================================================
+   Buttons - WordPress Standard
+   ========================================================================== */
+
+.scp-test-form .button-primary {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+    text-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.scp-test-form .button-primary:hover,
+.scp-test-form .button-primary:focus {
+    background: #135e96;
+    border-color: #135e96;
+    color: #fff;
+}
+
+.scp-test-form .button-primary .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* ==========================================================================
+   Info Boxes - WordPress Standard
+   ========================================================================== */
+
+.scp-test-info {
+    background: #f0f6fc;
+    border-left: 4px solid #2271b1;
+    padding: 12px;
+    margin-top: 15px;
+}
+
+.scp-test-info p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #2c3338;
+}
+
+.scp-info-box {
+    background: #fcf9e8;
+    border-left: 4px solid #dba617;
+    padding: 12px;
+    margin-top: 15px;
+    display: flex;
+    align-items: start;
+    gap: 10px;
+}
+
+.scp-info-box .dashicons {
+    color: #826200;
+    flex-shrink: 0;
+}
+
+.scp-info-box p {
+    margin: 0;
+    color: #2c3338;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   Statistics
+   ========================================================================== */
+
+.scp-stat-number {
+    text-align: center;
+    padding: 30px;
+    background: #2271b1;
+    margin-bottom: 20px;
+}
+
+.scp-stat-value {
+    display: block;
+    font-size: 48px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1;
+}
+
+.scp-stat-label {
+    display: block;
+    margin-top: 10px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   Tables - WordPress Standard
+   ========================================================================== */
+
+.scp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.scp-table thead {
+    background: #f6f7f7;
+}
+
+.scp-table th {
+    text-align: left;
+    padding: 10px;
+    font-weight: 600;
+    color: #1d2327;
+    font-size: 13px;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.scp-table td {
+    padding: 10px;
+    border-bottom: 1px solid #dcdcde;
+    font-size: 13px;
+    color: #2c3338;
+}
+
+.scp-table tbody tr:hover {
+    background: #f6f7f7;
+}
+
+.scp-table code {
+    background: #f6f7f7;
+    padding: 2px 5px;
+    font-size: 12px;
+    border: 1px solid #dcdcde;
+}
+
+.scp-badge {
+    background: #2271b1;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.scp-no-data {
+    text-align: center;
+    padding: 40px;
+    color: #646970;
+    font-style: italic;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   Installation Steps
+   ========================================================================== */
+
+.scp-install-steps {
+    counter-reset: step-counter;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.scp-install-steps li {
+    counter-increment: step-counter;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 15px;
+    line-height: 1.6;
+    font-size: 13px;
+}
+
+.scp-install-steps li::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: #2271b1;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.scp-code-block {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    padding: 12px;
+    font-size: 12px;
+    overflow-x: auto;
+    margin: 10px 0;
+    line-height: 1.6;
+    color: #1d2327;
+}
+
+/* ==========================================================================
+   Debug Log
+   ========================================================================== */
+
+.scp-debug-actions {
+    margin-bottom: 15px;
+}
+
+.scp-debug-actions .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.scp-debug-actions .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.scp-debug-log-container {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    padding: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.scp-debug-log {
+    margin: 0;
+    color: #1d2327;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.scp-debug-log-container::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scp-debug-log-container::-webkit-scrollbar-track {
+    background: #f0f0f1;
+}
+
+.scp-debug-log-container::-webkit-scrollbar-thumb {
+    background: #c3c4c7;
+}
+
+.scp-debug-log-container::-webkit-scrollbar-thumb:hover {
+    background: #8c8f94;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 782px) {
+    .scp-smtp-dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    .scp-card {
+        padding: 15px;
+    }
+
+    .scp-stat-value {
+        font-size: 36px;
+    }
+
+    .scp-nav-tabs .nav-tab {
+        display: block;
+        margin-bottom: 0;
+    }
+}
+
+/* ==========================================================================
+   WordPress Admin Compatibility
+   ========================================================================== */
+
+.wp-admin .scp-smtp-wrap .notice {
+    margin: 0 0 15px 0;
+}
+
+.wp-admin .scp-smtp-wrap .notice p {
+    font-size: 13px;
+}
