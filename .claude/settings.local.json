@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Read(//c/__REPOS/jotajotape/WEBS/fr.jotajotape.com-2025/public_html/wp-content/plugins/scp-jotajotape-contacto/**)",
+      "Read(//c/__REPOS/jotajotape/WEBS/fr.jotajotape.com-2025/public_html/wp-content/**)",
+      "Bash(if [ -f \"C:\\__REPOS\\jotajotape\\WEBS\\fr.jotajotape.com-2025\\public_html\\wp-content\\scp-smtp-debug.log\" ])",
+      "Bash(then tail -50 \"C:\\__REPOS\\jotajotape\\WEBS\\fr.jotajotape.com-2025\\public_html\\wp-content\\scp-smtp-debug.log\")",
+      "Bash(else echo \"Archivo de log no encontrado\")",
+      "Bash(fi)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

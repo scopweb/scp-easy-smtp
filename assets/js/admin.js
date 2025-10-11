@@ -1,143 +1,210 @@
 /**
  * SCP Easy SMTP - Admin JavaScript
- * Interactive features for the admin interface
+ *
+ * Proporciona interactividad a la página de administración del plugin,
+ * incluyendo validaciones, animaciones y feedback al usuario.
+ *
+ * @version 2.1.0
+ * @package SCP\EasySMTP\Assets
  */
 
-(function($) {
+jQuery(document).ready(function ($) {
     'use strict';
 
-    $(document).ready(function() {
+    /**
+     * Objeto principal para la funcionalidad del admin de SCP Easy SMTP.
+     * @since 2.1.0
+     */
+    const scpSmtpAdmin = {
 
-        // Auto-dismiss notices after 5 seconds
-        setTimeout(function() {
-            $('.notice.is-dismissible').fadeOut(400, function() {
-                $(this).remove();
-            });
-        }, 5000);
+        /**
+         * Inicializa todos los listeners y funcionalidades.
+         */
+        init: function () {
+            this.listenForToggleSwitch();
+            this.listenForCopyPath();
+            this.handleTestEmailForm();
+            this.setupTemplatesPage();
+        },
 
-        // Email validation with visual feedback
-        $('#test_email').on('input', function() {
-            const email = $(this).val();
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        /**
+         * Gestiona el envío del formulario de prueba de email mediante AJAX.
+         */
+        handleTestEmailForm: function() {
+            $('.scp-test-form').on('submit', function(e) {
+                e.preventDefault();
 
-            if (emailRegex.test(email)) {
-                $(this).css('border-color', '#46b450');
-            } else if (email.length > 0) {
-                $(this).css('border-color', '#dc3232');
-            } else {
-                $(this).css('border-color', '#e0e0e0');
-            }
-        });
+                const form = $(this);
+                const feedbackContainer = $('#scp-test-feedback');
+                const spinner = form.find('.spinner');
+                const email = form.find('#test_email').val();
+                const nonce = form.find('#scp_smtp_test_email_nonce').val();
 
-        // Test email form submission with loading state
-        $('.scp-test-form').on('submit', function() {
-            const $submitBtn = $(this).find('button[type="submit"]');
-            const originalText = $submitBtn.html();
+                spinner.addClass('is-active');
+                feedbackContainer.slideUp().removeClass('success error');
 
-            $submitBtn.prop('disabled', true)
-                     .html('<span class="dashicons dashicons-update spin"></span> Enviando...');
-
-            // Re-enable after a timeout in case of error
-            setTimeout(function() {
-                $submitBtn.prop('disabled', false).html(originalText);
-            }, 10000);
-        });
-
-        // Add spinning animation to dashicons
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            .dashicons.spin {
-                animation: spin 1s linear infinite;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Highlight config path on click
-        $('.scp-config-path code').on('click', function() {
-            const range = document.createRange();
-            range.selectNodeContents(this);
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
-
-            // Show copied message
-            const $message = $('<span class="copied-message">Copiado!</span>');
-            $(this).parent().append($message);
-
-            setTimeout(function() {
-                $message.fadeOut(function() {
-                    $(this).remove();
-                });
-            }, 2000);
-        });
-
-        // Add copy button style
-        const copyStyle = document.createElement('style');
-        copyStyle.textContent = `
-            .scp-config-path {
-                position: relative;
-            }
-            .scp-config-path code {
-                cursor: pointer;
-                user-select: all;
-            }
-            .scp-config-path code:hover {
-                background: #1e2a38;
-            }
-            .copied-message {
-                position: absolute;
-                right: 10px;
-                top: 50%;
-                transform: translateY(-50%);
-                background: #46b450;
-                color: white;
-                padding: 5px 10px;
-                border-radius: 3px;
-                font-size: 12px;
-                animation: slideIn 0.3s ease;
-            }
-        `;
-        document.head.appendChild(copyStyle);
-
-        // Table row highlighting
-        $('.scp-table tbody tr').hover(
-            function() {
-                $(this).css('background-color', '#f0f8ff');
-            },
-            function() {
-                $(this).css('background-color', '');
-            }
-        );
-
-        // Tooltip for domain corrections
-        $('.scp-badge').attr('title', 'Número de correcciones realizadas');
-
-        // Animate stats on page load
-        $('.scp-stat-value').each(function() {
-            const $this = $(this);
-            const finalValue = parseInt($this.text());
-
-            if (finalValue > 0) {
-                $({ value: 0 }).animate({ value: finalValue }, {
-                    duration: 1500,
-                    easing: 'swing',
-                    step: function() {
-                        $this.text(Math.floor(this.value));
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'scp_smtp_send_test_email',
+                        email: email,
+                        nonce: nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            feedbackContainer.text(response.data.message).addClass('success');
+                        } else {
+                            feedbackContainer.text(response.data.message).addClass('error');
+                        }
+                    },
+                    error: function() {
+                        feedbackContainer.text('Error de comunicación con el servidor.').addClass('error');
                     },
                     complete: function() {
-                        $this.text(finalValue);
+                        spinner.removeClass('is-active');
+                        feedbackContainer.slideDown();
                     }
                 });
+            });
+        },
+
+        /**
+         * Escucha los clics en los interruptores de la tabla de correcciones
+         * y envía el formulario automáticamente para guardar el cambio.
+         */
+        listenForToggleSwitch: function () {
+            $('.scp-toggle-switch input[type="checkbox"]').on('change', function () {
+                $(this).closest('form').submit();
+            });
+        },
+
+        /**
+         * Escucha los clics en la ruta del archivo de configuración para copiarla.
+         */
+        listenForCopyPath: function () {
+            // Usar delegación de eventos para asegurar que funcione con contenido dinámico
+            $(document).on('click', '.scp-config-path code', function () {
+                const element = $(this);
+                scpSmtpAdmin.copyToClipboard(element.text(), function() {
+                    // Callback para feedback visual
+                    const originalText = element.text();
+                    element.text('¡Copiado!');
+                    setTimeout(() => {
+                        element.text(originalText);
+                    }, 1500);
+                });
+            });
+        },
+
+        /**
+         * Configura la página de plantillas y sus interacciones
+         */
+        setupTemplatesPage: function() {
+            // Si no estamos en la pestaña de plantillas, salimos
+            if ($('.scp-templates-form').length === 0) {
+                return;
             }
-        });
 
-        // Console easter egg
-        console.log('%c SCP Easy SMTP v2.0 ', 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 16px; padding: 10px; border-radius: 5px;');
-        console.log('Plugin desarrollado por ScopWeb - https://scopweb.com');
-    });
+            // Efecto de entrada para secciones de idiomas personalizados
+            $('.scp-custom-language').each(function(i) {
+                var $this = $(this);
+                setTimeout(function() {
+                    $this.addClass('highlight-animation');
+                    setTimeout(function() {
+                        $this.removeClass('highlight-animation');
+                    }, 1500);
+                }, i * 200);
+            });
 
-})(jQuery);
+            // Selector de idioma personalizado
+            $('#new_lang_select').on('change', function() {
+                var selected = this.options[this.selectedIndex];
+                $('#new_lang_code').val(selected.value || '');
+                $('#new_lang_name').val(selected.getAttribute('data-name') || '');
+                $('#new_lang_flag').val(selected.getAttribute('data-flag') || '');
+                $('#new_lang_locales').val(selected.getAttribute('data-locales') || '');
+            });
+
+            // Confirmación al eliminar idiomas
+            $(document).on('click', 'button[name="scp_smtp_remove_language"]', function(e) {
+                if (!confirm('¿Estás seguro de que quieres eliminar este idioma? Esta acción no se puede deshacer.')) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Comprobación de campos requeridos al añadir idiomas
+            $('button[name="scp_smtp_add_language"]').on('click', function(e) {
+                var code = $('#new_lang_code').val();
+                var name = $('#new_lang_name').val();
+                
+                if (!code || !name) {
+                    alert('Por favor, selecciona un idioma de la lista o completa al menos el código y nombre.');
+                    e.preventDefault();
+                }
+                
+                // Si todo está bien, mostrar feedback visual
+                $(this).addClass('adding-language');
+                $(this).html('<span class="dashicons dashicons-update spin"></span> Añadiendo...');
+            });
+            
+            // Si tenemos editores TinyMCE en la página, reinicializarlos para asegurarnos de que funcionan correctamente
+            if (typeof tinymce !== 'undefined') {
+                setTimeout(function() {
+                    // Dar un poco de tiempo para que la página se renderice completamente
+                    tinymce.remove();
+                    tinymce.init({
+                        selector: 'textarea.wp-editor-area',
+                        height: 250,
+                        menubar: false,
+                        plugins: 'lists link paste',
+                        toolbar: 'bold italic bullist numlist link removeformat code'
+                    });
+                }, 500);
+            }
+        },
+        
+        /**
+         * Copia un texto al portapapeles usando la API moderna.
+         * @param {string} text - El texto a copiar.
+         * @param {Function} callback - Función a ejecutar en caso de éxito.
+         */
+        copyToClipboard: function (text, callback) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    if (callback) {
+                        callback();
+                    }
+                }).catch(function(err) {
+                    console.error('SCP SMTP: No se pudo copiar el texto: ', err);
+                });
+            } else {
+                // Fallback para navegadores muy antiguos
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.style.position = "fixed"; // Evitar scroll
+                    textArea.style.opacity = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    if (callback) {
+                        callback();
+                    }
+                } catch (err) {
+                    console.error('SCP SMTP: Fallback de copiado falló: ', err);
+                } finally {
+                    if (textArea) {
+                        document.body.removeChild(textArea);
+                    }
+                }
+            }
+        }
+    };
+
+    // Iniciar el script.
+    scpSmtpAdmin.init();
+
+});
+

@@ -1,198 +1,218 @@
 <?php
 /**
- * Email Logger Class
- * Logs email sending attempts and domain corrections
+ * Gestor de Logs de Emails.
+ *
+ * Registra los intentos de envío de correos y las correcciones de dominio
+ * en tablas personalizadas de la base de datos para su posterior análisis.
+ *
+ * @package     SCP\EasySMTP\Inc
+ * @since       2.0.0
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
 }
 
-class Scp_Email_Logger {
+/**
+ * Clase final para el registro de actividad de correos.
+ *
+ * @final
+ */
+final class Scp_Email_Logger {
 
-    private $table_emails;
-    private $table_corrections;
+	/**
+	 * Nombre de la tabla para los logs de emails.
+	 *
+	 * @var string
+	 */
+	private $table_emails;
 
-    public function __construct() {
-        global $wpdb;
-        $this->table_emails = $wpdb->prefix . 'scp_smtp_emails';
-        $this->table_corrections = $wpdb->prefix . 'scp_smtp_corrections';
-    }
+	/**
+	 * Nombre de la tabla para los logs de correcciones.
+	 *
+	 * @var string
+	 */
+	private $table_corrections;
 
-    /**
-     * Create database tables for logging
-     */
-    public function create_tables() {
-        global $wpdb;
-        $charset_collate = $wpdb->get_charset_collate();
+	/**
+	 * Constructor de la clase.
+	 *
+	 * Inicializa los nombres de las tablas con el prefijo de WordPress.
+	 */
+	public function __construct() {
+		global $wpdb;
+		$this->table_emails      = $wpdb->prefix . 'scp_smtp_emails';
+		$this->table_corrections = $wpdb->prefix . 'scp_smtp_corrections';
+	}
 
-        // Table for email logs
-        $sql_emails = "CREATE TABLE IF NOT EXISTS {$this->table_emails} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            email_to varchar(255) NOT NULL,
-            subject varchar(255) NOT NULL,
-            status varchar(50) NOT NULL DEFAULT 'sent',
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY created_at (created_at)
-        ) $charset_collate;";
+	/**
+	 * Crea las tablas personalizadas en la base de datos durante la activación.
+	 */
+	public function create_tables() {
+		global $wpdb;
+		$charset_collate = $wpdb->get_charset_collate();
 
-        // Table for domain corrections
-        $sql_corrections = "CREATE TABLE IF NOT EXISTS {$this->table_corrections} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            original_email varchar(255) NOT NULL,
-            corrected_email varchar(255) NOT NULL,
-            original_domain varchar(255) NOT NULL,
-            corrected_domain varchar(255) NOT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY created_at (created_at),
-            KEY original_domain (original_domain)
-        ) $charset_collate;";
+		// Sentencia SQL para la tabla de logs de emails.
+		$sql_emails = "CREATE TABLE {$this->table_emails} (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			email_to VARCHAR(255) NOT NULL,
+			subject VARCHAR(255) NOT NULL,
+			status VARCHAR(50) NOT NULL DEFAULT 'sent',
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY (id),
+			KEY created_at (created_at)
+		) {$charset_collate};";
 
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql_emails);
-        dbDelta($sql_corrections);
-    }
+		// Sentencia SQL para la tabla de correcciones de dominio.
+		$sql_corrections = "CREATE TABLE {$this->table_corrections} (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			original_email VARCHAR(255) NOT NULL,
+			corrected_email VARCHAR(255) NOT NULL,
+			original_domain VARCHAR(255) NOT NULL,
+			corrected_domain VARCHAR(255) NOT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY (id),
+			KEY created_at (created_at),
+			KEY original_domain (original_domain)
+		) {$charset_collate};";
 
-    /**
-     * Log email sending attempt
-     *
-     * @param array $args Email arguments
-     */
-    public function log_email($args) {
-        global $wpdb;
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql_emails );
+		dbDelta( $sql_corrections );
+	}
 
-        // Check if table exists first
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_emails}'");
-        if (!$table_exists) {
-            return; // Silently skip if table doesn't exist
-        }
+	/**
+	 * Registra un intento de envío de correo.
+	 *
+	 * @param array $args Argumentos de la función `wp_mail`.
+	 */
+	public function log_email( $args ) {
+		global $wpdb;
 
-        $to = is_array($args['to']) ? implode(', ', $args['to']) : $args['to'];
-        $subject = $args['subject'] ?? '';
+		$to      = isset( $args['to'] ) ? ( is_array( $args['to'] ) ? implode( ', ', $args['to'] ) : $args['to'] ) : '';
+		$subject = isset( $args['subject'] ) ? $args['subject'] : '';
 
-        $wpdb->insert(
-            $this->table_emails,
-            [
-                'email_to' => sanitize_text_field($to),
-                'subject' => sanitize_text_field($subject),
-                'status' => 'sent',
-                'created_at' => current_time('mysql')
-            ],
-            ['%s', '%s', '%s', '%s']
-        );
-    }
+		$wpdb->insert(
+			$this->table_emails,
+			[
+				'email_to'   => sanitize_text_field( $to ),
+				'subject'    => sanitize_text_field( $subject ),
+				'status'     => 'sent',
+				'created_at' => current_time( 'mysql' ),
+			],
+			[ '%s', '%s', '%s', '%s' ]
+		);
+	}
 
-    /**
-     * Log email domain correction
-     *
-     * @param string $original_email Original email address
-     * @param string $corrected_email Corrected email address
-     */
-    public function log_correction($original_email, $corrected_email) {
-        global $wpdb;
+	/**
+	 * Registra una corrección de dominio de email.
+	 *
+	 * @param string $original_email  La dirección de correo original.
+	 * @param string $corrected_email La dirección de correo corregida.
+	 */
+	public function log_correction( $original_email, $corrected_email ) {
+		global $wpdb;
 
-        // Check if table exists first
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_corrections}'");
-        if (!$table_exists) {
-            return; // Silently skip if table doesn't exist
-        }
+		$original_parts  = explode( '@', $original_email );
+		$corrected_parts = explode( '@', $corrected_email );
 
-        $original_parts = explode('@', $original_email);
-        $corrected_parts = explode('@', $corrected_email);
+		$original_domain  = isset( $original_parts[1] ) ? $original_parts[1] : '';
+		$corrected_domain = isset( $corrected_parts[1] ) ? $corrected_parts[1] : '';
 
-        $wpdb->insert(
-            $this->table_corrections,
-            [
-                'original_email' => sanitize_email($original_email),
-                'corrected_email' => sanitize_email($corrected_email),
-                'original_domain' => isset($original_parts[1]) ? sanitize_text_field($original_parts[1]) : '',
-                'corrected_domain' => isset($corrected_parts[1]) ? sanitize_text_field($corrected_parts[1]) : '',
-                'created_at' => current_time('mysql')
-            ],
-            ['%s', '%s', '%s', '%s', '%s']
-        );
-    }
+		$wpdb->insert(
+			$this->table_corrections,
+			[
+				'original_email'   => sanitize_email( $original_email ),
+				'corrected_email'  => sanitize_email( $corrected_email ),
+				'original_domain'  => sanitize_text_field( $original_domain ),
+				'corrected_domain' => sanitize_text_field( $corrected_domain ),
+				'created_at'       => current_time( 'mysql' ),
+			],
+			[ '%s', '%s', '%s', '%s', '%s' ]
+		);
+	}
 
-    /**
-     * Get recent email logs
-     *
-     * @param int $limit Number of logs to retrieve
-     * @return array Array of email logs
-     */
-    public function get_recent_emails($limit = 50) {
-        global $wpdb;
+	/**
+	 * Obtiene los logs de emails más recientes.
+	 *
+	 * @param int $limit Número de registros a obtener.
+	 * @return array Array de objetos con los logs.
+	 */
+	public function get_recent_emails( $limit = 50 ) {
+		global $wpdb;
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table_emails} ORDER BY created_at DESC LIMIT %d",
+				absint( $limit )
+			)
+		);
+	}
 
-        return $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM {$this->table_emails} ORDER BY created_at DESC LIMIT %d",
-                $limit
-            )
-        );
-    }
+	/**
+	 * Obtiene los logs de correcciones de dominio más recientes.
+	 *
+	 * @param int $limit Número de registros a obtener.
+	 * @return array Array de objetos con los logs.
+	 */
+	public function get_recent_corrections( $limit = 50 ) {
+		global $wpdb;
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table_corrections} ORDER BY created_at DESC LIMIT %d",
+				absint( $limit )
+			)
+		);
+	}
 
-    /**
-     * Get recent domain corrections
-     *
-     * @param int $limit Number of corrections to retrieve
-     * @return array Array of corrections
-     */
-    public function get_recent_corrections($limit = 50) {
-        global $wpdb;
+	/**
+	 * Obtiene estadísticas sobre las correcciones de dominio.
+	 *
+	 * @return array Un array con el total de correcciones y las más frecuentes.
+	 */
+	public function get_correction_stats() {
+		global $wpdb;
 
-        return $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM {$this->table_corrections} ORDER BY created_at DESC LIMIT %d",
-                $limit
-            )
-        );
-    }
+		$total_corrections = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->table_corrections}" );
 
-    /**
-     * Get correction statistics
-     *
-     * @return array Statistics array
-     */
-    public function get_correction_stats() {
-        global $wpdb;
+		$top_corrections = $wpdb->get_results(
+			"SELECT original_domain, corrected_domain, COUNT(*) as count
+			 FROM {$this->table_corrections}
+			 GROUP BY original_domain, corrected_domain
+			 ORDER BY count DESC
+			 LIMIT 10"
+		);
 
-        $total_corrections = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_corrections}");
+		return [
+			'total'           => $total_corrections,
+			'top_corrections' => $top_corrections,
+		];
+	}
 
-        $top_corrections = $wpdb->get_results(
-            "SELECT original_domain, corrected_domain, COUNT(*) as count
-             FROM {$this->table_corrections}
-             GROUP BY original_domain, corrected_domain
-             ORDER BY count DESC
-             LIMIT 10"
-        );
+	/**
+	 * Limpia los logs antiguos para mantener la base de datos optimizada.
+	 *
+	 * @param int $days Días de logs a conservar.
+	 */
+	public function clear_old_logs( $days = 30 ) {
+		global $wpdb;
+		$days = absint( $days );
 
-        return [
-            'total' => $total_corrections,
-            'top_corrections' => $top_corrections
-        ];
-    }
+		if ( $days <= 0 ) {
+			return;
+		}
 
-    /**
-     * Clear old logs
-     *
-     * @param int $days Days to keep logs
-     */
-    public function clear_old_logs($days = 30) {
-        global $wpdb;
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$this->table_emails} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+				$days
+			)
+		);
 
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$this->table_emails} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
-                $days
-            )
-        );
-
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$this->table_corrections} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
-                $days
-            )
-        );
-    }
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$this->table_corrections} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+				$days
+			)
+		);
+	}
 }

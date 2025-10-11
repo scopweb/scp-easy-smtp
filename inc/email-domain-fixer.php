@@ -1,117 +1,189 @@
 <?php
 /**
- * Email Domain Fixer Class
- * Corrects common typos in email domains
+ * Gestor de Corrección de Dominios de Email.
+ *
+ * Gestiona la lógica para corregir errores comunes en los dominios de los
+ * correos electrónicos, combinando reglas por defecto, reglas personalizadas
+ * por el usuario y un filtro para desarrolladores.
+ *
+ * @package     SCP\EasySMTP\Inc
+ * @since       2.0.0
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
 }
 
-class Scp_Email_Domain_Fixer {
+/**
+ * Clase final para la corrección de dominios de email.
+ *
+ * @final
+ */
+final class Scp_Email_Domain_Fixer {
 
-    /**
-     * Array of common email domain typos and their corrections
-     */
-    private static $domain_corrections = [
-        // Gmail corrections
-        'gaiml.com' => 'gmail.com',
-        'gamail.com' => 'gmail.com',
-        'gemail.com' => 'gmail.com',
-        'gemail.es' => 'gmail.es',
-        'gemeil.com' => 'gmail.com',
-        'gimail.com' => 'gmail.com',
-        'gmail.comm' => 'gmail.com',
-        'gmail.con' => 'gmail.com',
-        'gmeil.com' => 'gmail.com',
-        'gmil.com' => 'gmail.com',
-        'gmila.com' => 'gmail.com',
-        'gmal.com' => 'gmail.com',
-        'gnail.com' => 'gmail.com',
-        'gmial.com' => 'gmail.com',
+	const CUSTOM_CORRECTIONS_OPTION = 'scp_smtp_custom_corrections';
+	const DISABLED_DEFAULTS_OPTION = 'scp_smtp_disabled_default_corrections';
 
-        // Hotmail corrections
-        'hemail.com' => 'hotmail.com',
-        'hoail.com' => 'hotmail.com',
-        'homail.com' => 'hotmail.com',
-        'hormail.com' => 'hotmail.com',
-        'hotmaol.com' => 'hotmail.com',
-        'hotmal.com' => 'hotmail.com',
-        'hotmial.com' => 'hotmail.com',
-        'hotmail.cm' => 'hotmail.com',
-        'hotmail.co' => 'hotmail.com',
-        'hotmail.con' => 'hotmail.com',
-        'hotmail.coma' => 'hotmail.com',
-        'hotmail.om' => 'hotmail.com',
-        'jotamail.com' => 'hotmail.com',
-        'otmil.com' => 'hotmail.com',
+	/**
+	 * Almacena las correcciones para evitar múltiples cargas.
+	 *
+	 * @var array|null
+	 */
+	private static $all_corrections = null;
 
-        // Hotmail variants .es
-        'hitmail.es' => 'hotmail.es',
-        'hotmeil.es' => 'hotmail.es',
+	/**
+	 * Devuelve las correcciones de dominio por defecto.
+	 *
+	 * @return array
+	 */
+	public static function get_default_corrections() {
+		return [
+			'gmial.com'      => 'gmail.com',
+			'gamil.com'      => 'gmail.com',
+			'gmal.com'       => 'gmail.com',
+			'gmail.con'      => 'gmail.com',
+			'gmaill.com'     => 'gmail.com',
+			'hotmail.con'    => 'hotmail.com',
+			'hotmal.com'     => 'hotmail.com',
+			'hotmial.com'    => 'hotmail.com',
+			'otlook.com'     => 'outlook.com',
+			'outlok.com'     => 'outlook.com',
+			'yahoo.con'      => 'yahoo.com',
+			'yaho.com'       => 'yahoo.com',
+			'yahho.com'      => 'yahoo.com',
+			'icloud.con'     => 'icloud.com',
+			'icluod.com'     => 'icloud.com',
+			'aol.con'        => 'aol.com',
+			'protonmail.con' => 'protonmail.com',
+		];
+	}
 
-        // Outlook corrections
-        'outlook.con' => 'outlook.com',
-        'outlok.com' => 'outlook.com',
+	/**
+	 * Obtiene todas las correcciones de dominio activas.
+	 *
+	 * Combina las correcciones por defecto (excluyendo las desactivadas por el usuario),
+	 * las correcciones personalizadas por el usuario y las añadidas por el filtro de desarrollador.
+	 *
+	 * @return array Un array de correcciones `['dominio_incorrecto' => 'dominio_correcto']`.
+	 */
+	public static function get_all_corrections() {
+		if ( null !== self::$all_corrections ) {
+			return self::$all_corrections;
+		}
 
-        // Yahoo corrections
-        'yaho.com' => 'yahoo.com',
-        'yahoo.con' => 'yahoo.com',
-        'yahooo.com' => 'yahoo.com',
-        'ymail.con' => 'yahoo.com',
+		$default_corrections  = self::get_default_corrections();
+		$custom_corrections   = get_option( self::CUSTOM_CORRECTIONS_OPTION, [] );
+		$disabled_corrections = get_option( self::DISABLED_DEFAULTS_OPTION, [] );
 
-        // Test domain
-        'test.com' => 'jotajotape.com',
-    ];
+		// Filtrar las correcciones por defecto que han sido desactivadas.
+		$active_defaults = array_diff_key( $default_corrections, array_flip( $disabled_corrections ) );
 
-    /**
-     * Fix email domain typos
-     *
-     * @param string $email Email address to fix
-     * @return string Corrected email address
-     */
-    public static function fix_email_domain($email) {
-        if (empty($email)) {
-            return '';
-        }
+		// Fusionar: las personalizadas sobreescriben a las por defecto si hay conflicto.
+		$merged_corrections = array_merge( $active_defaults, $custom_corrections );
 
-        // Split email into local part and domain
-        $parts = explode('@', $email);
-        if (count($parts) !== 2) {
-            return $email;
-        }
+		/**
+		 * Filtro para añadir o modificar correcciones de dominio.
+		 * Tiene la máxima prioridad y puede sobreescribir cualquier regla.
+		 *
+		 * @param array $corrections Array de correcciones de dominio.
+		 * @return array Array modificado.
+		 */
+		self::$all_corrections = apply_filters( 'scp_smtp_domain_corrections', $merged_corrections );
 
-        $local = $parts[0];
-        $domain = strtolower($parts[1]);
+		return self::$all_corrections;
+	}
 
-        // Check if domain needs correction
-        if (isset(self::$domain_corrections[$domain])) {
-            $original_domain = $domain;
-            $domain = self::$domain_corrections[$domain];
+	/**
+	 * Corrige el dominio de una dirección de email si es necesario.
+	 *
+	 * @param string $email La dirección de email a verificar.
+	 * @return string La dirección de email corregida o la original si no se encontró corrección.
+	 */
+	public static function fix_email_domain( $email ) {
+		if ( ! is_email( $email ) ) {
+			return $email;
+		}
 
-            // Log the correction
-            do_action('scp_smtp_domain_corrected', $original_domain, $domain, $email);
-        }
+		$parts = explode( '@', $email );
+		if ( count( $parts ) !== 2 ) {
+			return $email;
+		}
 
-        return $local . '@' . $domain;
-    }
+		list( $user, $domain ) = $parts;
+		$domain = strtolower( $domain );
 
-    /**
-     * Get all domain corrections
-     *
-     * @return array Array of domain corrections
-     */
-    public static function get_domain_corrections() {
-        return self::$domain_corrections;
-    }
+		$corrections = self::get_all_corrections();
 
-    /**
-     * Add custom domain correction
-     *
-     * @param string $wrong_domain Incorrect domain
-     * @param string $correct_domain Correct domain
-     */
-    public static function add_domain_correction($wrong_domain, $correct_domain) {
-        self::$domain_corrections[strtolower($wrong_domain)] = strtolower($correct_domain);
-    }
+		if ( isset( $corrections[ $domain ] ) ) {
+			$corrected_domain = $corrections[ $domain ];
+			$corrected_email  = $user . '@' . $corrected_domain;
+
+			// Registrar la corrección.
+			if ( class_exists( 'Scp_Email_Logger' ) ) {
+				Scp_Email_Logger::log_correction( $email, $corrected_email );
+			}
+
+			return $corrected_email;
+		}
+
+		return $email;
+	}
+
+	/**
+	 * Añade una nueva corrección personalizada.
+	 *
+	 * @param string $original El dominio incorrecto.
+	 * @param string $corrected El dominio correcto.
+	 * @return bool True si se añadió, false si los datos son inválidos.
+	 */
+	public static function add_custom_correction( $original, $corrected ) {
+		$original  = strtolower( trim( $original ) );
+		$corrected = strtolower( trim( $corrected ) );
+
+		if ( empty( $original ) || empty( $corrected ) || $original === $corrected ) {
+			return false;
+		}
+
+		$custom_corrections = get_option( self::CUSTOM_CORRECTIONS_OPTION, [] );
+		$custom_corrections[ $original ] = $corrected;
+
+		return update_option( self::CUSTOM_CORRECTIONS_OPTION, $custom_corrections );
+	}
+
+	/**
+	 * Elimina una corrección personalizada.
+	 *
+	 * @param string $original El dominio incorrecto a eliminar.
+	 * @return bool True si se eliminó.
+	 */
+	public static function remove_custom_correction( $original ) {
+		$custom_corrections = get_option( self::CUSTOM_CORRECTIONS_OPTION, [] );
+		if ( isset( $custom_corrections[ $original ] ) ) {
+			unset( $custom_corrections[ $original ] );
+			return update_option( self::CUSTOM_CORRECTIONS_OPTION, $custom_corrections );
+		}
+		return false;
+	}
+
+	/**
+	 * Activa o desactiva una corrección por defecto.
+	 *
+	 * @param string $original El dominio incorrecto de la regla por defecto.
+	 * @param bool   $is_disabled True para desactivar, false para activar.
+	 * @return bool True si el estado cambió.
+	 */
+	public static function toggle_default_correction( $original, $is_disabled ) {
+		$disabled_corrections = get_option( self::DISABLED_DEFAULTS_OPTION, [] );
+		$key                  = array_search( $original, $disabled_corrections, true );
+
+		if ( $is_disabled && false === $key ) {
+			// Desactivar: añadir a la lista si no está.
+			$disabled_corrections[] = $original;
+		} elseif ( ! $is_disabled && false !== $key ) {
+			// Activar: quitar de la lista si está.
+			unset( $disabled_corrections[ $key ] );
+		}
+
+		return update_option( self::DISABLED_DEFAULTS_OPTION, array_values( $disabled_corrections ) );
+	}
 }
