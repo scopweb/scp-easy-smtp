@@ -132,13 +132,27 @@ final class Scp_Email_Domain_Fixer {
 	/**
 	 * Añade una nueva corrección personalizada.
 	 *
+	 * IMPORTANTE: Solo usuarios con permisos 'manage_options' pueden añadir correcciones.
+	 *
 	 * @param string $original El dominio incorrecto.
 	 * @param string $corrected El dominio correcto.
-	 * @return bool True si se añadió, false si los datos son inválidos.
+	 * @return bool True si se añadió, false si los datos son inválidos o sin permisos.
 	 */
 	public static function add_custom_correction( $original, $corrected ) {
-		$original  = strtolower( trim( $original ) );
-		$corrected = strtolower( trim( $corrected ) );
+		// Verificar permisos.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			error_log( 'SCP SMTP: Intento no autorizado de añadir corrección de dominio.' );
+			return false;
+		}
+
+		$original  = sanitize_text_field( strtolower( trim( $original ) ) );
+		$corrected = sanitize_text_field( strtolower( trim( $corrected ) ) );
+
+		// Validar que sean dominios válidos.
+		if ( ! self::is_valid_domain( $original ) || ! self::is_valid_domain( $corrected ) ) {
+			error_log( 'SCP SMTP: Dominio inválido en add_custom_correction: ' . $original . ' -> ' . $corrected );
+			return false;
+		}
 
 		if ( empty( $original ) || empty( $corrected ) || $original === $corrected ) {
 			return false;
@@ -153,10 +167,20 @@ final class Scp_Email_Domain_Fixer {
 	/**
 	 * Elimina una corrección personalizada.
 	 *
+	 * IMPORTANTE: Solo usuarios con permisos 'manage_options' pueden eliminar correcciones.
+	 *
 	 * @param string $original El dominio incorrecto a eliminar.
 	 * @return bool True si se eliminó.
 	 */
 	public static function remove_custom_correction( $original ) {
+		// Verificar permisos.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			error_log( 'SCP SMTP: Intento no autorizado de eliminar corrección de dominio.' );
+			return false;
+		}
+
+		$original = sanitize_text_field( strtolower( trim( $original ) ) );
+
 		$custom_corrections = get_option( self::CUSTOM_CORRECTIONS_OPTION, [] );
 		if ( isset( $custom_corrections[ $original ] ) ) {
 			unset( $custom_corrections[ $original ] );
@@ -168,11 +192,21 @@ final class Scp_Email_Domain_Fixer {
 	/**
 	 * Activa o desactiva una corrección por defecto.
 	 *
+	 * IMPORTANTE: Solo usuarios con permisos 'manage_options' pueden modificar correcciones.
+	 *
 	 * @param string $original El dominio incorrecto de la regla por defecto.
 	 * @param bool   $is_disabled True para desactivar, false para activar.
 	 * @return bool True si el estado cambió.
 	 */
 	public static function toggle_default_correction( $original, $is_disabled ) {
+		// Verificar permisos.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			error_log( 'SCP SMTP: Intento no autorizado de modificar corrección de dominio.' );
+			return false;
+		}
+
+		$original = sanitize_text_field( strtolower( trim( $original ) ) );
+
 		$disabled_corrections = get_option( self::DISABLED_DEFAULTS_OPTION, [] );
 		$key                  = array_search( $original, $disabled_corrections, true );
 
@@ -185,5 +219,37 @@ final class Scp_Email_Domain_Fixer {
 		}
 
 		return update_option( self::DISABLED_DEFAULTS_OPTION, array_values( $disabled_corrections ) );
+	}
+
+	/**
+	 * Valida que una cadena sea un dominio válido.
+	 *
+	 * @param string $domain El dominio a validar.
+	 * @return bool True si es un dominio válido, false en caso contrario.
+	 */
+	private static function is_valid_domain( $domain ) {
+		// Verificar que no esté vacío.
+		if ( empty( $domain ) ) {
+			return false;
+		}
+
+		// Verificar longitud razonable.
+		if ( strlen( $domain ) > 255 ) {
+			return false;
+		}
+
+		// Verificar formato básico: letras, números, puntos y guiones.
+		// Un dominio válido debe tener al menos un punto y no puede empezar/terminar con punto o guión.
+		if ( ! preg_match( '/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i', $domain ) ) {
+			return false;
+		}
+
+		// Validar usando filter_var con un email ficticio.
+		$test_email = 'test@' . $domain;
+		if ( ! filter_var( $test_email, FILTER_VALIDATE_EMAIL ) ) {
+			return false;
+		}
+
+		return true;
 	}
 }

@@ -89,14 +89,37 @@ final class Scp_Email_Logger {
 	public function log_email( $args ) {
 		global $wpdb;
 
+		// Verificar que la tabla existe antes de intentar insertar.
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $this->table_emails ) );
+		if ( ! $table_exists ) {
+			return; // Silently skip si la tabla no existe.
+		}
+
 		$to      = isset( $args['to'] ) ? ( is_array( $args['to'] ) ? implode( ', ', $args['to'] ) : $args['to'] ) : '';
 		$subject = isset( $args['subject'] ) ? $args['subject'] : '';
+
+		// Sanitizar emails correctamente.
+		if ( strpos( $to, ',' ) !== false ) {
+			// Múltiples emails separados por coma.
+			$emails = array_map( 'trim', explode( ',', $to ) );
+			$emails = array_map( 'sanitize_email', $emails );
+			$to_clean = implode( ', ', $emails );
+		} else {
+			$to_clean = sanitize_email( $to );
+		}
+
+		// Sanitizar subject permitiendo HTML básico pero eliminando scripts.
+		$subject_clean = wp_kses_post( $subject );
+
+		// Limitar longitud para evitar problemas con la BD.
+		$to_clean = substr( $to_clean, 0, 255 );
+		$subject_clean = substr( $subject_clean, 0, 255 );
 
 		$wpdb->insert(
 			$this->table_emails,
 			[
-				'email_to'   => sanitize_text_field( $to ),
-				'subject'    => sanitize_text_field( $subject ),
+				'email_to'   => $to_clean,
+				'subject'    => $subject_clean,
 				'status'     => 'sent',
 				'created_at' => current_time( 'mysql' ),
 			],
@@ -112,6 +135,18 @@ final class Scp_Email_Logger {
 	 */
 	public function log_correction( $original_email, $corrected_email ) {
 		global $wpdb;
+
+		// Verificar que la tabla existe antes de intentar insertar.
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $this->table_corrections ) );
+		if ( ! $table_exists ) {
+			return; // Silently skip si la tabla no existe.
+		}
+
+		// Validar que sean emails válidos antes de procesar.
+		if ( ! is_email( $original_email ) || ! is_email( $corrected_email ) ) {
+			error_log( 'SCP SMTP: Intento de loggear corrección con email inválido: ' . $original_email . ' -> ' . $corrected_email );
+			return;
+		}
 
 		$original_parts  = explode( '@', $original_email );
 		$corrected_parts = explode( '@', $corrected_email );

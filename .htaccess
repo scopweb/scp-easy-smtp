@@ -1,0 +1,13 @@
+# Protección de archivos sensibles del plugin SCP Easy SMTP
+# Este archivo debe ser copiado al directorio wp-content/ para proteger los logs
+
+<Files "scp-smtp-debug.log">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Bloquear acceso a archivos de configuración si están en este directorio
+<FilesMatch "\.(ini|log|conf)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
