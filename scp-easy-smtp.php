@@ -177,10 +177,47 @@ final class Scp_Easy_SMTP_Plugin {
 
         // Activa el modo debug de SMTP si WP_DEBUG está habilitado.
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            $phpmailer->SMTPDebug = 2; // Muestra comunicación cliente-servidor.
+            // Nivel 4: Low level data output, all messages.
+            // Es más seguro que nivel 2 porque no muestra comandos de autenticación.
+            $phpmailer->SMTPDebug = 4;
+
+            // Usar función personalizada para capturar el debug y filtrarlo.
+            $phpmailer->Debugoutput = function( $str, $level ) {
+                // Filtrar información sensible antes de loggear.
+                $filtered = $this->filter_sensitive_debug_info( $str );
+                Scp_SMTP_Debug_Logger::log( "PHPMailer Debug (Level $level): " . $filtered );
+            };
         }
 
-        Scp_SMTP_Debug_Logger::log( 'SMTP configured successfully.' );
+        Scp_SMTP_Debug_Logger::log( 'SMTP configured successfully (password hidden for security).' );
+    }
+
+    /**
+     * Filtra información sensible de los mensajes de debug de PHPMailer.
+     *
+     * Oculta contraseñas, tokens de autenticación y otros datos sensibles.
+     *
+     * @param string $debug_msg Mensaje de debug de PHPMailer.
+     * @return string Mensaje filtrado.
+     */
+    private function filter_sensitive_debug_info( $debug_msg ) {
+        // Patrones de información sensible a ocultar.
+        $sensitive_patterns = [
+            // Comando AUTH LOGIN con contraseñas en base64.
+            '/AUTH LOGIN\s+([A-Za-z0-9+\/=]+)/i' => 'AUTH LOGIN [REDACTED]',
+            // Contraseñas en texto plano.
+            '/password[\s:=]+([^\s]+)/i' => 'password: [REDACTED]',
+            // Tokens de autenticación.
+            '/auth[\s:=]+([^\s]+)/i' => 'auth: [REDACTED]',
+            // API keys.
+            '/api[_-]?key[\s:=]+([^\s]+)/i' => 'api_key: [REDACTED]',
+        ];
+
+        foreach ( $sensitive_patterns as $pattern => $replacement ) {
+            $debug_msg = preg_replace( $pattern, $replacement, $debug_msg );
+        }
+
+        return $debug_msg;
     }
 
     /**
@@ -217,26 +254,77 @@ final class Scp_Easy_SMTP_Plugin {
     /**
      * Envía una confirmación automática basada en los datos del formulario.
      *
-     * Extrae los datos necesarios del cuerpo del mensaje para personalizar
-     * y enviar un email de confirmación al remitente original.
+     * IMPORTANTE: Esta funcionalidad está DESACTIVADA por defecto por seguridad.
+     * Solo se activa si el filtro 'scp_smtp_enable_auto_confirmation' retorna true.
+     *
+     * Extrae el email del remitente buscando patrones específicos como:
+     * - "Email: direccion@ejemplo.com"
+     * - "E-mail: direccion@ejemplo.com"
+     * - "Correo: direccion@ejemplo.com"
+     *
+     * Esto previene que se envíen confirmaciones a emails mencionados
+     * casualmente en el texto del mensaje.
      *
      * @param array $args Argumentos de la función `wp_mail`.
      */
     private function send_auto_confirmation( $args ) {
-        // Asumimos que el email del remitente está en el cuerpo del mensaje.
-        // Esta lógica puede necesitar ser más robusta dependiendo de los formularios.
-        if ( preg_match( '/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $args['message'], $matches ) ) {
-            $recipient_email = $matches[0];
-            
-            // Prepara datos extra para la plantilla.
-            // Aquí se podrían extraer más datos del cuerpo del mensaje si fuera necesario.
-            $extra_data = [];
+        /**
+         * Filtro para activar/desactivar las confirmaciones automáticas.
+         *
+         * Por defecto está DESACTIVADO por seguridad.
+         *
+         * @param bool $enabled False por defecto.
+         * @return bool True para activar, false para desactivar.
+         */
+        $auto_confirm_enabled = apply_filters( 'scp_smtp_enable_auto_confirmation', false );
 
-            // Intenta detectar el idioma si no se pasa explícitamente.
-            // Por ahora, la detección se basará en la configuración del plugin o el locale.
-            
-            Scp_Email_Templates::send_confirmation_email( $recipient_email, $extra_data );
+        if ( ! $auto_confirm_enabled ) {
+            return;
         }
+
+        // Buscar el email solo si está precedido por etiquetas específicas.
+        // Esto evita extraer emails mencionados casualmente en el texto.
+        $patterns = [
+            '/(?:Email|E-mail|Correo|Mail):\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i',
+            '/(?:From|De):\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i',
+        ];
+
+        $recipient_email = null;
+
+        foreach ( $patterns as $pattern ) {
+            if ( preg_match( $pattern, $args['message'], $matches ) ) {
+                $potential_email = sanitize_email( $matches[1] );
+
+                // Validar que sea un email válido.
+                if ( is_email( $potential_email ) ) {
+                    $recipient_email = $potential_email;
+                    break;
+                }
+            }
+        }
+
+        // Si no se encontró un email válido, no enviar confirmación.
+        if ( null === $recipient_email ) {
+            Scp_SMTP_Debug_Logger::log( 'Auto-confirmación: No se encontró un email válido en el mensaje.' );
+            return;
+        }
+
+        // Verificar que el email no sea del mismo dominio del sitio (evitar bucles).
+        $site_domain = wp_parse_url( home_url(), PHP_URL_HOST );
+        $email_domain = substr( strrchr( $recipient_email, '@' ), 1 );
+
+        if ( $site_domain === $email_domain ) {
+            Scp_SMTP_Debug_Logger::log( 'Auto-confirmación: Email ignorado por ser del mismo dominio del sitio.', [
+                'email' => $recipient_email,
+            ] );
+            return;
+        }
+
+        // Prepara datos extra para la plantilla.
+        $extra_data = [];
+
+        Scp_SMTP_Debug_Logger::log( 'Auto-confirmación: Enviando confirmación a ' . $recipient_email );
+        Scp_Email_Templates::send_confirmation_email( $recipient_email, $extra_data );
     }
 
     /**

@@ -179,11 +179,71 @@ final class Scp_SMTP_Config {
 	}
 
 	/**
-	 * Comprueba si el archivo de configuración existe y es legible.
+	 * Comprueba si el archivo de configuración existe, es legible y tiene permisos seguros.
 	 *
-	 * @return bool `true` si existe y se puede leer, `false` en caso contrario.
+	 * IMPORTANTE: El archivo debe tener permisos 600 o 640 para evitar que otros
+	 * usuarios del servidor puedan leer las credenciales SMTP.
+	 *
+	 * @return bool `true` si existe, se puede leer y tiene permisos seguros, `false` en caso contrario.
 	 */
 	public function config_exists() {
-		return is_readable( $this->config_path );
+		if ( ! is_readable( $this->config_path ) ) {
+			return false;
+		}
+
+		// Validar permisos del archivo por seguridad.
+		$this->check_file_permissions();
+
+		return true;
+	}
+
+	/**
+	 * Verifica que el archivo de configuración tenga permisos seguros.
+	 *
+	 * Emite warnings si el archivo tiene permisos demasiado permisivos (world-readable).
+	 */
+	private function check_file_permissions() {
+		if ( ! file_exists( $this->config_path ) ) {
+			return;
+		}
+
+		// Obtener permisos del archivo.
+		$perms = fileperms( $this->config_path );
+		$perms_octal = substr( sprintf( '%o', $perms ), -3 );
+
+		// Verificar si el archivo es legible por otros (world-readable).
+		// Permisos seguros: 600 (rw-------) o 640 (rw-r-----)
+		// Permisos inseguros: 644 (rw-r--r--), 664, 666, 777, etc.
+		$others_can_read = ( $perms & 0x0004 ); // Bit de lectura para 'others'.
+
+		if ( $others_can_read ) {
+			$warning_msg = sprintf(
+				'ADVERTENCIA DE SEGURIDAD: El archivo de configuración %s tiene permisos inseguros (%s). ' .
+				'Cualquier usuario del servidor puede leer las credenciales SMTP. ' .
+				'Cambia los permisos a 600 o 640 usando: chmod 600 %s',
+				$this->config_path,
+				$perms_octal,
+				$this->config_path
+			);
+
+			error_log( 'SCP SMTP: ' . $warning_msg );
+
+			// Si WP_DEBUG está activo, también mostrar en el debug log.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				Scp_SMTP_Debug_Logger::log( $warning_msg );
+			}
+
+			// Añadir un admin notice si estamos en el área de administración.
+			add_action( 'admin_notices', function() use ( $perms_octal, $warning_msg ) {
+				?>
+				<div class="notice notice-error">
+					<p>
+						<strong><?php esc_html_e( 'SCP Easy SMTP - Advertencia de Seguridad:', 'scp-easy-smtp' ); ?></strong>
+						<?php echo esc_html( $warning_msg ); ?>
+					</p>
+				</div>
+				<?php
+			} );
+		}
 	}
 }
